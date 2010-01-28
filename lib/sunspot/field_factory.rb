@@ -105,9 +105,21 @@ module Sunspot
         if values = @data_extractor.value_for(model)
           values.each_pair do |dynamic_name, value|
             field_instance = build(dynamic_name)
+            # DPC _ Hack in boost support
+            boost = nil
+            if value.is_a?Hash
+              boost_extractor = if value[:boost].respond_to?(:to_f)
+                DataExtractor::Constant.new(value[:boost])
+              else
+                DataExtractor::AttributeExtractor.new(value[:boost])
+              end
+              value = value[:value]
+              boost = boost_extractor.value_for(model)
+            end
             Util.Array(field_instance.to_indexed(value)).each do |scalar_value|
               document << Solr::Field.new(
-                field_instance.indexed_name.to_sym => scalar_value
+                field_instance.indexed_name.to_sym => scalar_value,
+                :boost => boost
               )
             end
           end
